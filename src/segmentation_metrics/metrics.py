@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from scipy.spatial.distance import directed_hausdorff
 
 
 def dice_score(seg, gt):
@@ -32,3 +33,42 @@ def dice_score(seg, gt):
         dice_similarity_coeff = (2*inter)/(union.item() + eps)
 
         return dice_similarity_coeff
+
+
+def symmetric_hausdorff_distance(seg, gt):
+    """
+    Calculate the symmetric hausdorff distance between
+    the segmentation and ground truth
+    This metric is also known as Maximum Surface Distance
+
+    :param seg:
+    :param gt:
+    :return:
+    """
+    if isinstance(seg, torch.Tensor):
+        seg = seg.numpy()
+    if isinstance(gt, torch.Tensor):
+        gt = gt.numpy()
+
+    msd = max(directed_hausdorff(seg[:, 1, :, :], gt[:, 1, :, :])[0],
+              directed_hausdorff(gt[:, 1, :, :], seg[:, 1, :, :])[0])
+
+    return msd
+
+
+def relative_volume_difference(seg, gt):
+    """
+    Calculate the relative volume difference between segmentation
+    and the ground truth
+    :param seg:
+    :param gt:
+    :return:
+    """
+
+    if isinstance(seg, torch.Tensor):
+        seg = seg.numpy()
+    if isinstance(gt, torch.Tensor):
+        gt = gt.numpy()
+
+    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/np.sum(gt, axis=None)
+    return rvd
