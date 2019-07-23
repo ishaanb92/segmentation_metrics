@@ -35,7 +35,7 @@ def dice_score(seg, gt):
         return dice_similarity_coeff
 
 
-def symmetric_hausdorff_distance(seg, gt):
+def hausdorff_distance(seg, gt):
     """
     Calculate the symmetric hausdorff distance between
     the segmentation and ground truth
@@ -45,16 +45,41 @@ def symmetric_hausdorff_distance(seg, gt):
     :param gt:
     :return:
     """
-    if isinstance(seg, torch.Tensor):
-        seg = seg.numpy()
-    if isinstance(gt, torch.Tensor):
-        gt = gt.numpy()
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
 
-    msd = max(directed_hausdorff(seg[:, 1, :, :], gt[:, 1, :, :])[0],
-              directed_hausdorff(gt[:, 1, :, :], seg[:, 1, :, :])[0])
+    msd = max(directed_hausdorff_distance(seg, gt),
+              directed_hausdorff_distance(gt, seg))
 
     return msd
 
+
+def directed_hausdorff_distance(vol1, vol2):
+    """
+    Directed Hausdorff distance between a pair of (3+1)-D volumes
+    Max over hausdorff distances calculated between aligned slice pairs
+    FIXME: Extend to N-D
+    FIXME: Check for logical bugs
+    :param vol1: Expected dimensions num_slices x num_classes x H x W
+    :param vol2: Expected dimensions num_slices x num_classes x H x W
+    :return:
+    """
+    assert (isinstance(vol1, np.ndarray) and isinstance(vol2, np.ndarray))
+    assert(vol1.ndim == 4 and vol2.ndim == 4)
+
+    # We only need the foreground class
+    vol1 = vol1[:, 1, :, :]
+    vol2 = vol2[:, 1, :, :]
+
+    n_slices = vol1.shape[0]
+
+    hausdorff_distance_slice_pair = []
+    for slice_id in range(n_slices):
+        hausdorff_distance_slice_pair.append(directed_hausdorff(vol1[slice_id, :, :], vol2[slice_id, :, :])[0])
+
+    directed_hd = max(hausdorff_distance_slice_pair)
+
+    return directed_hd
 
 def relative_volume_difference(seg, gt):
     """
