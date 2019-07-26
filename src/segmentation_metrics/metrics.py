@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
 
@@ -16,23 +15,19 @@ def dice_score(seg, gt):
         dice_similarity_coeff (float) : Dice similiarty between predicted segmentations and ground truths
 
     """
-    with torch.no_grad():
-        if isinstance(seg, np.ndarray):
-            seg = torch.Tensor(seg)
-        if isinstance(gt, np.ndarray):
-            gt = torch.Tensor(gt)
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
 
-        seg = seg.contiguous().view(-1)
-        gt = gt.contiguous().view(-1)
+    eps = 0.0001
+    seg = seg.flatten()
+    gt = gt.flatten()
 
-        inter = torch.dot(seg, gt).item()
-        union = torch.sum(seg) + torch.sum(gt)
+    inter = np.dot(seg, gt)
+    union = np.sum(seg) + np.sum(gt)
 
-        eps = 0.0001  # For numerical stability
+    dice_similarity_coeff = (2*inter)/(union + eps)
 
-        dice_similarity_coeff = (2*inter)/(union.item() + eps)
-
-        return dice_similarity_coeff
+    return dice_similarity_coeff
 
 
 def hausdorff_distance(seg, gt):
@@ -81,6 +76,7 @@ def directed_hausdorff_distance(vol1, vol2):
 
     return directed_hd
 
+
 def relative_volume_difference(seg, gt):
     """
     Calculate the relative volume difference between segmentation
@@ -90,10 +86,8 @@ def relative_volume_difference(seg, gt):
     :return:
     """
 
-    if isinstance(seg, torch.Tensor):
-        seg = seg.numpy()
-    if isinstance(gt, torch.Tensor):
-        gt = gt.numpy()
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
 
     rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/np.sum(gt, axis=None)
     return rvd
