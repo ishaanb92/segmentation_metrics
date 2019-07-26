@@ -1,24 +1,23 @@
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
 
+eps = 0.0001  # Avoid 0/0 situations
+
 
 def dice_score(seg, gt):
     """
     Function that calculates the dice similarity co-efficient
     over the entire batch
 
-    Parameters:
-        seg (torch.Tensor) : Batch of (Predicted )Segmentation map
-        gt (torch.Tensor) : Batch of ground truth maps
+    :param seg: (numpy ndarray) Batch of (Predicted )Segmentation map
+    :param gt: (numpy ndarray) Batch of ground truth maps
 
-    Returns:
-        dice_similarity_coeff (float) : Dice similiarty between predicted segmentations and ground truths
+    :return dice_similarity_coeff: (float) Dice score
 
     """
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    eps = 0.0001
     seg = seg.flatten()
     gt = gt.flatten()
 
@@ -36,9 +35,9 @@ def hausdorff_distance(seg, gt):
     the segmentation and ground truth
     This metric is also known as Maximum Surface Distance
 
-    :param seg:
-    :param gt:
-    :return:
+    :param seg: (numpy ndarray) Predicted segmentation. Expected dimensions num_slices x num_classes x H x W
+    :param gt: (numpy ndarray) Ground Truth. Expected dimensions num_slices x num_classes x H x W
+    :return: msd: (numpy ndarray) Symmetric hausdorff distance (Maximum surface distance)
     """
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
@@ -53,18 +52,21 @@ def directed_hausdorff_distance(vol1, vol2):
     """
     Directed Hausdorff distance between a pair of (3+1)-D volumes
     Max over hausdorff distances calculated between aligned slice pairs
-    FIXME: Extend to N-D
+    FIXME: Currently works for a 2-class label (foreground + background)
     FIXME: Check for logical bugs
-    :param vol1: Expected dimensions num_slices x num_classes x H x W
-    :param vol2: Expected dimensions num_slices x num_classes x H x W
-    :return:
+
+    :param vol1: (numpy ndarray) Expected dimensions num_slices x num_classes x H x W
+    :param vol2: (numpy ndarray) Expected dimensions num_slices x num_classes x H x W
+    :return: directed_hd : (float) Directed Hausdorff distance
     """
     assert (isinstance(vol1, np.ndarray) and isinstance(vol2, np.ndarray))
     assert(vol1.ndim == 4 and vol2.ndim == 4)
 
+    n_classes = vol1.shape[1]
+
     # We only need the foreground class
-    vol1 = vol1[:, 1, :, :]
-    vol2 = vol2[:, 1, :, :]
+    vol1 = vol1[:, n_classes-1, :, :]
+    vol2 = vol2[:, n_classes-1, :, :]
 
     n_slices = vol1.shape[0]
 
@@ -81,13 +83,15 @@ def relative_volume_difference(seg, gt):
     """
     Calculate the relative volume difference between segmentation
     and the ground truth
-    :param seg:
-    :param gt:
-    :return:
+
+    :param seg: (numpy ndarray) Predicted segmentation
+    :param gt: (numpy ndarray) Ground truth mask
+    :return: rvd: (float) Relative volume difference
     """
 
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/np.sum(gt, axis=None)
+    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(gt, axis=None) + eps)
+
     return rvd
