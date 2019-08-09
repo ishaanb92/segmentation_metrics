@@ -35,8 +35,8 @@ def hausdorff_distance(seg, gt):
     the segmentation and ground truth
     This metric is also known as Maximum Surface Distance
 
-    :param seg: (numpy ndarray) Predicted segmentation. Expected dimensions num_slices x num_classes x H x W
-    :param gt: (numpy ndarray) Ground Truth. Expected dimensions num_slices x num_classes x H x W
+    :param seg: (numpy ndarray) Predicted segmentation. Expected dimensions num_slices x H x W
+    :param gt: (numpy ndarray) Ground Truth. Expected dimensions num_slices x H x W
     :return: msd: (numpy ndarray) Symmetric hausdorff distance (Maximum surface distance)
     """
     assert (isinstance(seg, np.ndarray))
@@ -55,18 +55,12 @@ def directed_hausdorff_distance(vol1, vol2):
     FIXME: Currently works for a 2-class label (foreground + background)
     FIXME: Check for logical bugs
 
-    :param vol1: (numpy ndarray) Expected dimensions num_slices x num_classes x H x W
-    :param vol2: (numpy ndarray) Expected dimensions num_slices x num_classes x H x W
+    :param vol1: (numpy ndarray) Expected dimensions num_slices x H x W
+    :param vol2: (numpy ndarray) Expected dimensions num_slices x H x W
     :return: directed_hd : (float) Directed Hausdorff distance
     """
     assert (isinstance(vol1, np.ndarray) and isinstance(vol2, np.ndarray))
-    assert(vol1.ndim == 4 and vol2.ndim == 4)
-
-    n_classes = vol1.shape[1]
-
-    # We only need the foreground class
-    vol1 = vol1[:, n_classes-1, :, :]
-    vol2 = vol2[:, n_classes-1, :, :]
+    assert(vol1.ndim == 3 and vol2.ndim == 3) # HD for 3D volumes
 
     n_slices = vol1.shape[0]
 
@@ -86,12 +80,13 @@ def relative_volume_difference(seg, gt):
 
     :param seg: (numpy ndarray) Predicted segmentation
     :param gt: (numpy ndarray) Ground truth mask
-    :return: rvd: (float) Relative volume difference
+    :return: rvd: (float) Relative volume difference (as %)
     """
 
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
     rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(gt, axis=None) + eps)
+    rvd = abs(rvd)*100
 
     return rvd
