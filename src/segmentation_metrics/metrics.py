@@ -78,6 +78,11 @@ def relative_volume_difference(seg, gt):
     Calculate the relative volume difference between segmentation
     and the ground truth
 
+    RVD (A, B) = (|B| - |A|)/|A|
+
+    If RVD > 0 => Under-segmentation
+       RVD < 0 => Over-segmentation
+
     :param seg: (numpy ndarray) Predicted segmentation
     :param gt: (numpy ndarray) Ground truth mask
     :return: rvd: (float) Relative volume difference (as %)
@@ -86,7 +91,7 @@ def relative_volume_difference(seg, gt):
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(gt, axis=None) + eps)
-    rvd = abs(rvd)*100
+    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(seg, axis=None) + eps)
+    rvd = rvd*100
 
     return rvd
