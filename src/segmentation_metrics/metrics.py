@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
+from scipy.ndimage import find_objects
 
 eps = 0.0001  # Avoid 0/0 situations
 
@@ -27,6 +28,19 @@ def dice_score(seg, gt):
     dice_similarity_coeff = (2*inter)/(union + eps)
 
     return dice_similarity_coeff
+
+
+def calculate_intersection(seg, gt):
+    """
+    Calculates intersection (as dot product) between 2 masks
+
+    :param seg:
+    :param gt:
+    :return:
+    """
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
+    return np.dot(seg.flatten(), gt.flatten())
 
 
 def hausdorff_distance(seg, gt):
