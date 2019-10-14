@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
-from scipy.ndimage import find_objects
+from utils.image_utils import find_number_of_objects
 
-eps = 0.0001  # Avoid 0/0 situations
+eps = 0.0001  # Avoid div-by-zero situations
 
 
 def dice_score(seg, gt):
@@ -22,7 +22,7 @@ def dice_score(seg, gt):
     seg = seg.flatten()
     gt = gt.flatten()
 
-    inter = np.dot(seg, gt)
+    inter = calculate_intersection(seg, gt)
     union = np.sum(seg) + np.sum(gt)
 
     dice_similarity_coeff = (2*inter)/(union + eps)
@@ -40,7 +40,13 @@ def calculate_intersection(seg, gt):
     """
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
-    return np.dot(seg.flatten(), gt.flatten())
+
+    if seg.ndim > 1:
+        seg = seg.flatten()
+    if gt.ndim > 1:
+        gt = gt.flatten()
+
+    return np.dot(seg, gt)
 
 
 def hausdorff_distance(seg, gt):
@@ -74,7 +80,7 @@ def directed_hausdorff_distance(vol1, vol2):
     :return: directed_hd : (float) Directed Hausdorff distance
     """
     assert (isinstance(vol1, np.ndarray) and isinstance(vol2, np.ndarray))
-    assert(vol1.ndim == 3 and vol2.ndim == 3) # HD for 3D volumes
+    assert(vol1.ndim == 3 and vol2.ndim == 3)  # HD for 3D volumes
 
     n_slices = vol1.shape[0]
 
@@ -92,7 +98,7 @@ def relative_volume_difference(seg, gt):
     Calculate the relative volume difference between segmentation
     and the ground truth
 
-    RVD (A, B) = (|B| - |A|)/|A|
+    RVD (A, B) = (|B| - |A|)/|B|
 
     If RVD > 0 => Under-segmentation
        RVD < 0 => Over-segmentation
@@ -105,7 +111,69 @@ def relative_volume_difference(seg, gt):
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(seg, axis=None) + eps)
+    rvd = (np.sum(gt, axis=None) - np.sum(seg, axis=None))/(np.sum(gt, axis=None) + eps)
     rvd = rvd*100
 
     return rvd
+
+
+def analyze_detected_lesions(seg, gt, verbose=False):
+    """
+    Function to analyze the detected lesions i.e. count the number of true positives, false negatives and
+    false positives.
+    Presence is determined on the basis of a non-zero overlap i.e. if the intersection (dot product) > 0,
+
+    :param seg: (numpy ndarray)
+    :param gt: (numpy ndarray)
+    :return: lesion_counts: (dict) Dictionary with counts of different types of lesions
+    """
+
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
+
+    num_predicted_lesions, list_of_preds = find_number_of_objects(mask=seg)
+    num_true_lesions, list_of_lesions = find_number_of_objects(mask=gt)
+
+    true_positives = 0
+    for predicted_volumes in list_of_preds:
+        intersection = calculate_intersection(seg[predicted_volumes], gt[predicted_volumes])
+        if intersection > 0:  # This lesion is considered detected
+            true_positives += 1
+
+    false_negatives = num_true_lesions-num_predicted_lesions
+    false_positives = num_predicted_lesions-true_positives
+
+    lesion_counts = {'true positives': true_positives,
+                     'false negatives': false_negatives,
+                     'false positives': false_positives,
+                     'true lesions': num_true_lesions}
+
+    if verbose is True:
+        print('Number of lesions in GT = {}\n'
+              'True positives detected = {}\n'
+              'False negatives detected = {}\n'
+              'False positives detected = {}'.format(num_true_lesions,
+                                                     true_positives,
+                                                     false_negatives,
+                                                     false_positives))
+
+    return lesion_counts
+
+
+def calculate_true_positive_rate(seg, gt):
+    """
+    Calculate the TPR between prediction and ground truth
+
+    :param seg: (numpy ndarray) N_CLASSES x H x W x D
+    :param gt: (numpy ndarray) N_CLASSES x H x W x D
+    :return: tpr: (float) True positive rate
+    """
+
+    assert (isinstance(seg, np.ndarray))
+    assert (isinstance(gt, np.ndarray))
+
+    lesion_counts = analyze_detected_lesions(seg, gt, verbose=True)
+    tpr = lesion_counts['true positives']/(lesion_counts['true positives'] + lesion_counts['false negatives'] + eps)
+
+    return tpr
+
