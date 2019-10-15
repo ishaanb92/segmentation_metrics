@@ -135,12 +135,13 @@ def analyze_detected_lesions(seg, gt, verbose=False):
     num_true_lesions, list_of_lesions = find_number_of_objects(mask=gt)
 
     true_positives = 0
-    for predicted_volumes in list_of_preds:
-        intersection = calculate_intersection(seg[predicted_volumes], gt[predicted_volumes])
+
+    for true_volumes in list_of_lesions:
+        intersection = calculate_intersection(seg[true_volumes], gt[true_volumes])
         if intersection > 0:  # This lesion is considered detected
             true_positives += 1
 
-    false_negatives = num_true_lesions-num_predicted_lesions
+    false_negatives = num_true_lesions-true_positives
     false_positives = num_predicted_lesions-true_positives
 
     lesion_counts = {'true positives': true_positives,
@@ -150,9 +151,11 @@ def analyze_detected_lesions(seg, gt, verbose=False):
 
     if verbose is True:
         print('Number of lesions in GT = {}\n'
+              'Number of lesions in prediction = {}\n'
               'True positives detected = {}\n'
-              'False negatives detected = {}\n'
+              'False negatives (missed lesions) = {}\n'
               'False positives detected = {}'.format(num_true_lesions,
+                                                     num_predicted_lesions,
                                                      true_positives,
                                                      false_negatives,
                                                      false_positives))
