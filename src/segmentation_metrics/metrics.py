@@ -170,6 +170,7 @@ def calculate_true_positive_rate(seg, gt):
     :param seg: (numpy ndarray) N_CLASSES x H x W x D
     :param gt: (numpy ndarray) N_CLASSES x H x W x D
     :return: tpr: (float) True positive rate
+    :return: lesion_counts: (dict) Dictionary containing all 4 kind of counts, can be used for addn metric calc
     """
 
     assert (isinstance(seg, np.ndarray))
@@ -178,5 +179,5 @@ def calculate_true_positive_rate(seg, gt):
     lesion_counts = analyze_detected_lesions(seg, gt, verbose=True)
     tpr = lesion_counts['true positives']/(lesion_counts['true positives'] + lesion_counts['false negatives'] + eps)
 
-    return tpr
+    return tpr, lesion_counts
 
