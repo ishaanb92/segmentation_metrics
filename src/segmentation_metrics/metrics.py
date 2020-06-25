@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
-from utils.image_utils import find_number_of_objects
+from utils.image_utils import return_lesion_coordinates
 
 eps = 0.0001  # Avoid div-by-zero situations
 
@@ -131,18 +131,18 @@ def analyze_detected_lesions(seg, gt, verbose=False):
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    num_predicted_lesions, list_of_preds = find_number_of_objects(mask=seg)
-    num_true_lesions, list_of_lesions = find_number_of_objects(mask=gt)
+    predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
+    true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
 
     true_positives = 0
 
-    for true_volumes in list_of_lesions:
-        intersection = calculate_intersection(seg[true_volumes], gt[true_volumes])
-        if intersection > 0:  # This lesion is considered detected
+    for true_volumes in true_slices:
+        intersection = dice_score(seg[true_volumes], gt[true_volumes])
+        if intersection > 0.0:  # This lesion is considered detected if overlap is > 0, according to Marielle's results
             true_positives += 1
 
     false_negatives = num_true_lesions-true_positives
-    false_positives = num_predicted_lesions-true_positives
+    false_positives = max(num_predicted_lesions-true_positives, 0)  # A prediction might cover multiple lesions
 
     lesion_counts = {'true positives': true_positives,
                      'false negatives': false_negatives,
@@ -163,7 +163,7 @@ def analyze_detected_lesions(seg, gt, verbose=False):
     return lesion_counts
 
 
-def calculate_true_positive_rate(seg, gt):
+def calculate_true_positive_rate(seg, gt, verbose=False):
     """
     Calculate the TPR between prediction and ground truth
 
@@ -176,8 +176,68 @@ def calculate_true_positive_rate(seg, gt):
     assert (isinstance(seg, np.ndarray))
     assert (isinstance(gt, np.ndarray))
 
-    lesion_counts = analyze_detected_lesions(seg, gt, verbose=True)
+    lesion_counts = analyze_detected_lesions(seg, gt, verbose=verbose)
     tpr = lesion_counts['true positives']/(lesion_counts['true positives'] + lesion_counts['false negatives'] + eps)
 
     return tpr, lesion_counts
+
+def analyze_uncertainty_map(seg, gt, umap):
+    """
+    Function to (qualitatively) analyze uncertainty map
+    We compute average entropy over regions where a lesion has been predicted
+    to check if the avg. entropy is higher for false postives.
+
+    """
+    assert(isinstance(seg, np.ndarray))
+    assert(isinstance(gt, np.ndarray))
+    assert(isinstance(umap, np.ndarray))
+
+    predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
+    true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
+
+    # Analysis for false positives
+    region_uncertainties_tp = []
+    region_uncertainties_fp = []
+    region_uncertainties_fn = []
+    for predicted_volume in predicted_slices:
+        intersection = dice_score(seg[predicted_volume], gt[predicted_volume])
+        if intersection > 0.0: # Detected
+            region_uncertainties_tp.append(np.mean(umap[predicted_volume]))
+        else: # False Positive
+            region_uncertainties_fp.append(np.mean(umap[predicted_volume]))
+
+    # Analysis for false negatives
+    for true_volume in true_slices:
+        intersection = dice_score(seg[true_volume], gt[true_volume])
+        if intersection == 0: # False negative
+            region_uncertainties_fn.append(np.mean(umap[true_volume]))
+
+    if len(region_uncertainties_tp) > 0:
+        mean_unc_tp = np.mean(np.array(region_uncertainties_tp))
+    else:
+        mean_unc_tp = np.nan
+
+    if len(region_uncertainties_fp) > 0:
+        mean_unc_fp = np.mean(np.array(region_uncertainties_fp))
+    else:
+        mean_unc_fp = np.nan
+
+    if len(region_uncertainties_fn) > 0:
+        mean_unc_fn = np.mean(np.array(region_uncertainties_fn))
+    else:
+        mean_unc_fn = np.nan
+
+    region_unc_dict = {'tp_unc' : mean_unc_tp, 'fp_unc': mean_unc_fp, 'fn_unc': mean_unc_fn}
+
+    return region_unc_dict
+
+
+
+
+
+
+
+
+
+
 
