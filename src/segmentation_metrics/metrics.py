@@ -181,7 +181,7 @@ def calculate_true_positive_rate(seg, gt, verbose=False):
 
     return tpr, lesion_counts
 
-def analyze_uncertainty_map(seg, gt, umap):
+def compute_spatial_entropy(seg, gt, umap):
     """
     Function to (qualitatively) analyze uncertainty map
     We compute average entropy over regions where a lesion has been predicted
@@ -194,40 +194,25 @@ def analyze_uncertainty_map(seg, gt, umap):
 
     predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
     true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
-
-    # Analysis for false positives
+    # Analysis for true postives and false positives
     region_uncertainties_tp = []
     region_uncertainties_fp = []
     region_uncertainties_fn = []
+
     for predicted_volume in predicted_slices:
         intersection = dice_score(seg[predicted_volume], gt[predicted_volume])
-        if intersection > 0.0: # Detected
+        if intersection > 0: # True positive
             region_uncertainties_tp.append(np.mean(umap[predicted_volume]))
         else: # False Positive
             region_uncertainties_fp.append(np.mean(umap[predicted_volume]))
 
-    # Analysis for false negatives
+   # Analysis for false negatives
     for true_volume in true_slices:
         intersection = dice_score(seg[true_volume], gt[true_volume])
         if intersection == 0: # False negative
             region_uncertainties_fn.append(np.mean(umap[true_volume]))
 
-    if len(region_uncertainties_tp) > 0:
-        mean_unc_tp = np.mean(np.array(region_uncertainties_tp))
-    else:
-        mean_unc_tp = np.nan
-
-    if len(region_uncertainties_fp) > 0:
-        mean_unc_fp = np.mean(np.array(region_uncertainties_fp))
-    else:
-        mean_unc_fp = np.nan
-
-    if len(region_uncertainties_fn) > 0:
-        mean_unc_fn = np.mean(np.array(region_uncertainties_fn))
-    else:
-        mean_unc_fn = np.nan
-
-    region_unc_dict = {'tp_unc' : mean_unc_tp, 'fp_unc': mean_unc_fp, 'fn_unc': mean_unc_fn}
+    region_unc_dict = {'tp_unc' : region_uncertainties_tp, 'fp_unc': region_uncertainties_fp, 'fn_unc': region_uncertainties_fn}
 
     return region_unc_dict
 
