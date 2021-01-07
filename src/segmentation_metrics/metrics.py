@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import directed_hausdorff
 from utils.image_utils import return_lesion_coordinates
-
-eps = 0.0001  # Avoid div-by-zero situations
+from scipy.ndimage import binary_opening, binary_closing, generate_binary_structure
+eps = 1e-8  # Avoid div-by-zero situations
 
 
 def dice_score(seg, gt):
@@ -46,7 +46,7 @@ def calculate_intersection(seg, gt):
     if gt.ndim > 1:
         gt = gt.flatten()
 
-    return np.dot(seg, gt)
+    return np.sum(seg*gt)
 
 
 def hausdorff_distance(seg, gt):
@@ -138,7 +138,7 @@ def analyze_detected_lesions(seg, gt, verbose=False):
 
     for true_volumes in true_slices:
         intersection = dice_score(seg[true_volumes], gt[true_volumes])
-        if intersection > 0.0:  # This lesion is considered detected if overlap is > 0, according to Marielle's results
+        if intersection > 0:  # This lesion is considered detected if overlap is > 0, according to Marielle's results
             true_positives += 1
 
     false_negatives = num_true_lesions-true_positives
@@ -181,6 +181,7 @@ def calculate_true_positive_rate(seg, gt, verbose=False):
 
     return tpr, lesion_counts
 
+
 def compute_spatial_entropy(seg, gt, umap):
     """
     Function to (qualitatively) analyze uncertainty map
@@ -216,13 +217,44 @@ def compute_spatial_entropy(seg, gt, umap):
 
     return region_unc_dict
 
+def compute_lesion_volumes(seg, gt):
+    """
+    Function to compute (approximate) lesion volume.
+    The find_objects() function provides a tuple of slices defining
+    the minimal parallelopiped covering the lesion
+    The volume is given as length*breadth*depth
 
+    """
+    predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
+    true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
 
+    tp_pred_volumes = []
+    fp_pred_volumes = []
+    fn_true_volumes = []
+    tp_true_volumes = []
 
+    for predicted_volume in predicted_slices:
+        intersection = dice_score(seg[predicted_volume], gt[predicted_volume])
+        length, breadth, depth = seg[predicted_volume].shape
+        volume = length*breadth*depth
+        if intersection > 0: # True positive
+            tp_pred_volumes.append(volume)
+        else: # False Positive
+            fp_pred_volumes.append(volume)
 
+    for true_volume in true_slices:
+        intersection = dice_score(seg[true_volume], gt[true_volume])
+        length, breadth, depth = gt[true_volume].shape
+        volume = length*breadth*depth
+        if intersection == 0: # False negative
+            fn_true_volumes.append(volume)
+        else:
+            tp_true_volumes.append(volume)
 
+    lesion_volume_dict = {'tp_pred': tp_pred_volumes,
+                          'tp_true': tp_true_volumes,
+                          'fp_pred': fp_pred_volumes,
+                          'fn_true': fn_true_volumes}
 
-
-
-
+    return lesion_volume_dict
 
