@@ -214,9 +214,20 @@ def visualize_lesion_correspondences(dgraph, fname=None):
 
     dgraph_viz = filter_edges(dgraph)
 
+    # Create a color map
+    color_map = []
+    for node in dgraph_viz:
+        node_name = node.get_name()
+        if "predicted" in node_name.lower():
+            color_map.append('red')
+        else:
+            color_map.append('green')
+
     pos = nx.bipartite_layout(dgraph_viz, pred_lesion_nodes)
 
-    nx.draw(dgraph_viz, pos=pos)
+    nx.draw(dgraph_viz, pos=pos, node_color=color_map)
+
+    # TODO: Add figure title and legend
 
     plt.savefig(fname)
 
