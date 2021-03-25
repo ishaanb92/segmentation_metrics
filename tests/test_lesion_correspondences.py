@@ -24,3 +24,5 @@ if __name__ == '__main__':
 
     dgraph = create_correspondence_graph(seg=seg_np, gt=gt_np)
     count_detections(dgraph)
+
+    visualize_lesion_correspondences(dgraph, fname='test_figure.png')

@@ -12,7 +12,7 @@ from utils.image_utils import return_lesion_coordinates
 import networkx as nx
 import numpy as np
 from networkx.algorithms import bipartite
-
+import matplotlib.pyplot as plt
 
 class Lesion():
 
@@ -70,7 +70,7 @@ def create_correspondence_graph(seg, gt):
     dgraph = nx.DiGraph()
 
     # In case of no overlap between 2 lesion, we add an edge with weight 0
-    # so that the graph is a valid bipartite graph
+    # so that the graph has no disconnected nodes
 
     # Create forward edges (partition 0 -> partition 1)
     for pred_lesion in pred_lesions:
@@ -87,7 +87,7 @@ def create_correspondence_graph(seg, gt):
             if dice > 0:
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, dice)])
             else:
-                dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, 0)]) # False positive
+                dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, 0)])
 
 
     # Create backward edges (partition 1 -> partition 0)
@@ -171,5 +171,57 @@ def filter_edges(dgraph):
     Function to remove edges with zero weight (for better viz)
 
     """
+    pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
+
+    # Create a dummy graph that has disconnected nodes for better visualization
+
+    dgraph_viz = nx.DiGraph()
+
+    # Create forward connections
+    for pred_node in pred_lesion_nodes:
+        weights = []
+        for gt_node in gt_lesion_nodes:
+            edge_weight = dgraph[pred_node][gt_node]['weight']
+            weights.append(edge_weight)
+            if edge_weight > 0:
+                dgraph_viz.add_weighted_edges_from([(pred_node, gt_node, edge_weight)])
+
+        max_weight = np.amax(np.array(weights))
+
+        if max_weight == 0:
+            dgraph_viz.add_node(pred_node) # False positive
+
+    # Create backward connections
+    for gt_node in gt_lesion_nodes:
+        weights = []
+        for pred_node in pred_lesion_nodes:
+            edge_weight = dgraph[gt_node][pred_node]['weight']
+            weights.append(edge_weight)
+            if edge_weight > 0:
+                dgraph_viz.add_weighted_edges_from([(gt_node, pred_node, edge_weight)])
+
+        max_weight = np.amax(np.array(weights))
+
+        if max_weight == 0:
+            dgraph_viz.add_node(gt_node) # False negative
+
+    return dgraph_viz
+
+
+def visualize_lesion_correspondences(dgraph, fname=None):
+
+    pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
+
+    dgraph_viz = filter_edges(dgraph)
+
+    pos = nx.bipartite_layout(dgraph_viz, pred_lesion_nodes)
+
+    nx.draw(dgraph_viz, pos=pos)
+
+    plt.savefig(fname)
+
+    plt.close()
+
+
 
 
