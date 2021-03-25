@@ -94,7 +94,7 @@ def create_correspondence_graph(seg, gt):
     for gt_lesion in gt_lesions:
         gt_lesion_volume = np.zeros_like(gt)
         gt_lesion_slice = gt_lesion.get_coordinates()
-        gt_lesion_volume[gt_lesion_slice] += seg[gt_lesion_slice]
+        gt_lesion_volume[gt_lesion_slice] += gt[gt_lesion_slice]
         # Iterate over GT lesions
         for pred_lesion in pred_lesions:
             seg_lesion_volume = np.zeros_like(seg)
@@ -130,7 +130,9 @@ def count_detections(dgraph=None):
             # Examine edge weights
             edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
             incoming_edge_weights.append(edge_weight)
-
+            # Sanity check
+            reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
+            assert(edge_weight == reverse_edge_weight)
         # Check the maximum weight
         max_weight = np.amax(np.array(incoming_edge_weights))
         if max_weight > 0: # Atleast one incoming edge with dice > 0
@@ -145,6 +147,9 @@ def count_detections(dgraph=None):
         for gt_lesion_node in gt_lesion_nodes:
             edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
             outgoing_edge_weights.append(edge_weight)
+            # Sanity check
+            reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
+            assert(edge_weight == reverse_edge_weight)
 
         # Check maximum weight
         max_weight = np.amax(np.array(outgoing_edge_weights))
@@ -160,5 +165,11 @@ def count_detections(dgraph=None):
     print('Number of false negatives = {}'.format(false_negatives))
 
 
+def filter_edges(dgraph):
+    """
+
+    Function to remove edges with zero weight (for better viz)
+
+    """
 
 
