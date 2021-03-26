@@ -41,7 +41,7 @@ class Lesion():
         return self.label
 
 
-def create_correspondence_graph(seg, gt):
+def create_correspondence_graph(seg, gt, verbose=False):
 
     assert(isinstance(seg, np.ndarray))
     assert(isinstance(gt, np.ndarray))
@@ -49,8 +49,10 @@ def create_correspondence_graph(seg, gt):
     # Find connected components
     predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
     true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
-    print('Number of predicted lesion = {}'.format(num_predicted_lesions))
-    print('Number of true lesions ={}'.format(num_true_lesions))
+
+    if verbose is True:
+        print('Number of predicted lesion = {}'.format(num_predicted_lesions))
+        print('Number of true lesions ={}'.format(num_true_lesions))
 
     pred_lesions = []
     gt_lesions = []
@@ -112,15 +114,17 @@ def create_correspondence_graph(seg, gt):
 
     return dgraph
 
-def count_detections(dgraph=None):
+def count_detections(dgraph=None, verbose=False):
 
-    print('Directed graph has {} nodes'.format(dgraph.number_of_nodes()))
+    if verbose is True:
+        print('Directed graph has {} nodes'.format(dgraph.number_of_nodes()))
 
     pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
 
     true_positives = 0
     false_positives = 0
     false_negatives = 0
+    true_lesions = len(gt_lesion_nodes)
 
     # Count true positives and false negatives
     for gt_lesion_node in gt_lesion_nodes:
@@ -159,10 +163,18 @@ def count_detections(dgraph=None):
         else:
             pred_lesion_node.set_label(label=0)
 
+    recall = true_positives/(true_positives + false_negatives)
+    precision = true_positives/(true_positives + false_positives)
 
-    print('Number of detected lesions = {}'.format(true_positives))
-    print('Number of false positives = {}'.format(false_positives))
-    print('Number of false negatives = {}'.format(false_negatives))
+    lesion_counts_dict = {}
+    lesion_counts_dict['recall'] = recall
+    lesion_counts_dict['precision'] = precision
+    lesion_counts_dict['true positives'] = true_positives
+    lesion_counts_dict['false positives'] = false_positives
+    lesion_counts_dict['false negatives'] = false_negatives
+    lesion_counts_dict['true lesions'] = true_lesions
+
+    return lesion_counts_dict
 
 
 def filter_edges(dgraph):
