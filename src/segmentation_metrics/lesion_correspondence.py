@@ -13,6 +13,7 @@ import networkx as nx
 import numpy as np
 from networkx.algorithms import bipartite
 import matplotlib.pyplot as plt
+import time
 
 class Lesion():
 
@@ -80,17 +81,30 @@ def create_correspondence_graph(seg, gt, verbose=False):
         lesion_slice = pred_lesion.get_coordinates()
         seg_lesion_volume[lesion_slice] += seg[lesion_slice]
         # Iterate over GT lesions
+        start_time = time.time()
         for gt_lesion in gt_lesions:
             gt_lesion_volume = np.zeros_like(gt)
             gt_lesion_slice = gt_lesion.get_coordinates()
             gt_lesion_volume[gt_lesion_slice] += gt[gt_lesion_slice]
             # Compute overlap
-            dice = dice_score(seg_lesion_volume, gt_lesion_volume)
+            dice_time_start = time.time()
+            # Compute intersection (only the numerator of the dice score to save exec time!)
+            dice = np.sum(np.multiply(seg_lesion_volume, gt_lesion_volume))
+            dice_exec_time = time.time() - dice_time_start
+            if verbose is True:
+                print('Dice computation takes {} seconds'.format(dice_exec_time))
+            edge_addition_start = time.time()
             if dice > 0:
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, dice)])
             else: # False positive
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, 0)])
+            edge_addition_time = time.time() - edge_addition_start
+            if verbose is True:
+                print('Edge addition takes {} seconds'.format(edge_addition_time))
 
+        exec_time = time.time() - start_time
+        if verbose is True:
+            print('Edge construction for a single lesion takes = {} seconds'.format(exec_time))
 
     # Create backward edges (partition 1 -> partition 0)
     for gt_lesion in gt_lesions:
@@ -102,8 +116,8 @@ def create_correspondence_graph(seg, gt, verbose=False):
             seg_lesion_volume = np.zeros_like(seg)
             lesion_slice = pred_lesion.get_coordinates()
             seg_lesion_volume[lesion_slice] += seg[lesion_slice]
-            # Compute overlap
-            dice = dice_score(seg_lesion_volume, gt_lesion_volume)
+            # Compute overlap (only the numerator of the dice score)
+            dice = np.sum(np.multiply(seg_lesion_volume, gt_lesion_volume))
             if dice > 0:
                 dgraph.add_weighted_edges_from([(gt_lesion, pred_lesion, dice)])
             else:

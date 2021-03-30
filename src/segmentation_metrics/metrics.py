@@ -46,7 +46,7 @@ def calculate_intersection(seg, gt):
     if gt.ndim > 1:
         gt = gt.flatten()
 
-    return np.sum(seg*gt)
+    return np.sum(np.multiply(seg, gt))
 
 
 def hausdorff_distance(seg, gt):
