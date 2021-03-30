@@ -88,7 +88,7 @@ def create_correspondence_graph(seg, gt, verbose=False):
             dice = dice_score(seg_lesion_volume, gt_lesion_volume)
             if dice > 0:
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, dice)])
-            else:
+            else: # False positive
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, 0)])
 
 
@@ -145,6 +145,9 @@ def count_detections(dgraph=None, verbose=False):
             false_negatives += 1
 
     # Count false positives
+    slices = []
+    labels = []
+
     for pred_lesion_node in pred_lesion_nodes:
         outgoing_edge_weights = []
 
@@ -157,16 +160,19 @@ def count_detections(dgraph=None, verbose=False):
 
         # Check maximum weight
         max_weight = np.amax(np.array(outgoing_edge_weights))
+        slices.append(pred_lesion_node.get_coordinates())
         if max_weight == 0:
             false_positives += 1
-            pred_lesion_node.set_label(label=1)
+            labels.append(1)
         else:
-            pred_lesion_node.set_label(label=0)
+            labels.append(0)
 
     recall = true_positives/(true_positives + false_negatives)
     precision = true_positives/(true_positives + false_positives)
 
     lesion_counts_dict = {}
+    lesion_counts_dict['slices'] = slices
+    lesion_counts_dict['labels'] = labels
     lesion_counts_dict['recall'] = recall
     lesion_counts_dict['precision'] = precision
     lesion_counts_dict['true positives'] = true_positives
