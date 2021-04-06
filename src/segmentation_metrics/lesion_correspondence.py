@@ -185,6 +185,7 @@ def count_detections(dgraph=None, verbose=False):
     precision = true_positives/(true_positives + false_positives)
 
     lesion_counts_dict = {}
+    lesion_counts_dict['graph'] = dgraph
     lesion_counts_dict['slices'] = slices
     lesion_counts_dict['labels'] = labels
     lesion_counts_dict['recall'] = recall

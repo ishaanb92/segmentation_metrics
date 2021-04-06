@@ -12,8 +12,8 @@ import os
 from segmentation_metrics.metrics import *
 from segmentation_metrics.lesion_correspondence import *
 
-#PAT_DIR = '/home/ishaan/lesion_segmentation/checkpoints/lits/baseline_ce_loss/train_images/93'
-PAT_DIR = '/home/ishaan/lesion_segmentation/checkpoints/baseline/unet_full_slice_deeper/images_499/72'
+PAT_DIR = '/home/ishaan/lesion_segmentation/checkpoints/lits/baseline_ce_loss/train_images/93'
+#PAT_DIR = '/home/ishaan/lesion_segmentation/checkpoints/baseline/unet_full_slice_deeper/images_499/72'
 
 if __name__ == '__main__':
 
