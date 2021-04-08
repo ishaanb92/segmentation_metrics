@@ -51,6 +51,9 @@ def create_correspondence_graph(seg, gt, verbose=False):
     predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
     true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
 
+    if num_predicted_lesions == 0:
+        return None
+
     if verbose is True:
         print('Number of predicted lesion = {}'.format(num_predicted_lesions))
         print('Number of true lesions ={}'.format(num_true_lesions))
@@ -128,61 +131,72 @@ def create_correspondence_graph(seg, gt, verbose=False):
 
     return dgraph
 
-def count_detections(dgraph=None, verbose=False):
+def count_detections(dgraph=None, verbose=False, gt=None):
 
     if verbose is True:
         print('Directed graph has {} nodes'.format(dgraph.number_of_nodes()))
 
-    pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
+    if dgraph is not None:
+        pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
 
-    true_positives = 0
-    false_positives = 0
-    false_negatives = 0
-    true_lesions = len(gt_lesion_nodes)
+        true_positives = 0
+        false_positives = 0
+        false_negatives = 0
+        true_lesions = len(gt_lesion_nodes)
 
-    # Count true positives and false negatives
-    for gt_lesion_node in gt_lesion_nodes:
-        incoming_edge_weights = []
+        # Count true positives and false negatives
+        for gt_lesion_node in gt_lesion_nodes:
+            incoming_edge_weights = []
+
+            for pred_lesion_node in pred_lesion_nodes:
+                # Examine edge weights
+                edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
+                incoming_edge_weights.append(edge_weight)
+                # Sanity check
+                reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
+                assert(edge_weight == reverse_edge_weight)
+            # Check the maximum weight
+            max_weight = np.amax(np.array(incoming_edge_weights))
+            if max_weight > 0: # Atleast one incoming edge with dice > 0
+                true_positives += 1
+            else:
+                false_negatives += 1
+
+        # Count false positives
+        slices = []
+        labels = []
 
         for pred_lesion_node in pred_lesion_nodes:
-            # Examine edge weights
-            edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
-            incoming_edge_weights.append(edge_weight)
-            # Sanity check
-            reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
-            assert(edge_weight == reverse_edge_weight)
-        # Check the maximum weight
-        max_weight = np.amax(np.array(incoming_edge_weights))
-        if max_weight > 0: # Atleast one incoming edge with dice > 0
-            true_positives += 1
-        else:
-            false_negatives += 1
+            outgoing_edge_weights = []
 
-    # Count false positives
-    slices = []
-    labels = []
+            for gt_lesion_node in gt_lesion_nodes:
+                edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
+                outgoing_edge_weights.append(edge_weight)
+                # Sanity check
+                reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
+                assert(edge_weight == reverse_edge_weight)
 
-    for pred_lesion_node in pred_lesion_nodes:
-        outgoing_edge_weights = []
+            # Check maximum weight
+            max_weight = np.amax(np.array(outgoing_edge_weights))
+            slices.append(pred_lesion_node.get_coordinates())
+            if max_weight == 0:
+                false_positives += 1
+                labels.append(1)
+            else:
+                labels.append(0)
 
-        for gt_lesion_node in gt_lesion_nodes:
-            edge_weight = dgraph[pred_lesion_node][gt_lesion_node]['weight']
-            outgoing_edge_weights.append(edge_weight)
-            # Sanity check
-            reverse_edge_weight = dgraph[gt_lesion_node][pred_lesion_node]['weight']
-            assert(edge_weight == reverse_edge_weight)
-
-        # Check maximum weight
-        max_weight = np.amax(np.array(outgoing_edge_weights))
-        slices.append(pred_lesion_node.get_coordinates())
-        if max_weight == 0:
-            false_positives += 1
-            labels.append(1)
-        else:
-            labels.append(0)
-
-    recall = true_positives/(true_positives + false_negatives)
-    precision = true_positives/(true_positives + false_positives)
+        recall = true_positives/(true_positives + false_negatives)
+        precision = true_positives/(true_positives + false_positives)
+    else:
+        labels = []
+        slices = []
+        recall = 0
+        precision = 0
+        false_positives = 0
+        true_positives = 0
+        _, num_true_lesions = return_lesion_coordinates(mask=gt)
+        true_lesions = num_true_lesions
+        false_negatives = num_true_lesions
 
     lesion_counts_dict = {}
     lesion_counts_dict['graph'] = dgraph
