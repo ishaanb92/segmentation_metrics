@@ -51,7 +51,7 @@ def create_correspondence_graph(seg, gt, verbose=False):
     predicted_slices, num_predicted_lesions = return_lesion_coordinates(mask=seg)
     true_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
 
-    if num_predicted_lesions == 0:
+    if num_predicted_lesions == 0 or num_true_lesions == 0:
         return None
 
     if verbose is True:
@@ -131,7 +131,7 @@ def create_correspondence_graph(seg, gt, verbose=False):
 
     return dgraph
 
-def count_detections(dgraph=None, verbose=False, gt=None):
+def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
 
     if verbose is True:
         print('Directed graph has {} nodes'.format(dgraph.number_of_nodes()))
@@ -190,11 +190,12 @@ def count_detections(dgraph=None, verbose=False, gt=None):
     else:
         labels = []
         slices = []
+        _, num_true_lesions = return_lesion_coordinates(mask=gt)
+        _, num_pred_lesions = return_lesion_coordinates(mask=seg)
         recall = 0
         precision = 0
-        false_positives = 0
+        false_positives = num_pred_lesions
         true_positives = 0
-        _, num_true_lesions = return_lesion_coordinates(mask=gt)
         true_lesions = num_true_lesions
         false_negatives = num_true_lesions
 
