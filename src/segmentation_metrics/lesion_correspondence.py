@@ -144,6 +144,7 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
         false_negatives = 0
         true_lesions = len(gt_lesion_nodes)
 
+        fn_slices = []
         # Count true positives and false negatives
         for gt_lesion_node in gt_lesion_nodes:
             incoming_edge_weights = []
@@ -161,6 +162,7 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
                 true_positives += 1
             else:
                 false_negatives += 1
+                fn_slices.append(gt_lesion_node.get_coordinates())
 
         # Count false positives
         slices = []
@@ -202,6 +204,7 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
     lesion_counts_dict = {}
     lesion_counts_dict['graph'] = dgraph
     lesion_counts_dict['slices'] = slices
+    lesion_counts_dict['fn_slices'] = fn_slices
     lesion_counts_dict['labels'] = labels
     lesion_counts_dict['recall'] = recall
     lesion_counts_dict['precision'] = precision
