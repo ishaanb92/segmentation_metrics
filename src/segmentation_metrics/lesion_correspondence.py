@@ -192,14 +192,15 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
     else:
         labels = []
         slices = []
-        _, num_true_lesions = return_lesion_coordinates(mask=gt)
-        _, num_pred_lesions = return_lesion_coordinates(mask=seg)
+        pred_slices, num_true_lesions = return_lesion_coordinates(mask=gt)
+        true_slices , num_pred_lesions = return_lesion_coordinates(mask=seg)
         recall = 0
         precision = 0
         false_positives = num_pred_lesions
         true_positives = 0
         true_lesions = num_true_lesions
         false_negatives = num_true_lesions
+        fn_slices = true_slices
 
     lesion_counts_dict = {}
     lesion_counts_dict['graph'] = dgraph
