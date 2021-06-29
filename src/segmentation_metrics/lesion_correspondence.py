@@ -192,6 +192,8 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
         true_lesions = num_true_lesions
         false_negatives = num_true_lesions
         fn_slices = true_slices
+        pred_lesion_nodes = []
+        gt_lesion_nodes = []
 
     lesion_counts_dict = {}
     lesion_counts_dict['graph'] = dgraph
