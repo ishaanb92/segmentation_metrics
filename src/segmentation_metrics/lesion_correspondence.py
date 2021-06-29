@@ -21,6 +21,7 @@ class Lesion():
 
         self.coordinates = coordinates
 
+        self.idx = idx
         if predicted is True:
             self.name = 'Predicted_lesion_{}'.format(idx)
         else:
@@ -33,6 +34,9 @@ class Lesion():
 
     def get_name(self):
         return self.name
+
+    def get_idx(self):
+        return self.idx
 
     # Use this method only for predicted lesion!!
     def set_label(self, label):
@@ -84,37 +88,24 @@ def create_correspondence_graph(seg, gt, verbose=False):
         lesion_slice = pred_lesion.get_coordinates()
         seg_lesion_volume[lesion_slice] += seg[lesion_slice]
         # Iterate over GT lesions
-        start_time = time.time()
         for gt_lesion in gt_lesions:
             gt_lesion_volume = np.zeros_like(gt)
             gt_lesion_slice = gt_lesion.get_coordinates()
             gt_lesion_volume[gt_lesion_slice] += gt[gt_lesion_slice]
             # Compute overlap
-            dice_time_start = time.time()
             # Compute intersection (only the numerator of the dice score to save exec time!)
             dice = np.sum(np.multiply(seg_lesion_volume, gt_lesion_volume))
-            dice_exec_time = time.time() - dice_time_start
-            if verbose is True:
-                print('Dice computation takes {} seconds'.format(dice_exec_time))
-            edge_addition_start = time.time()
             if dice > 0:
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, dice)])
             else: # False positive
                 dgraph.add_weighted_edges_from([(pred_lesion, gt_lesion, 0)])
-            edge_addition_time = time.time() - edge_addition_start
-            if verbose is True:
-                print('Edge addition takes {} seconds'.format(edge_addition_time))
-
-        exec_time = time.time() - start_time
-        if verbose is True:
-            print('Edge construction for a single lesion takes = {} seconds'.format(exec_time))
 
     # Create backward edges (partition 1 -> partition 0)
     for gt_lesion in gt_lesions:
         gt_lesion_volume = np.zeros_like(gt)
         gt_lesion_slice = gt_lesion.get_coordinates()
         gt_lesion_volume[gt_lesion_slice] += gt[gt_lesion_slice]
-        # Iterate over GT lesions
+        # Iterate over pred lesions
         for pred_lesion in pred_lesions:
             seg_lesion_volume = np.zeros_like(seg)
             lesion_slice = pred_lesion.get_coordinates()
@@ -213,6 +204,8 @@ def count_detections(dgraph=None, verbose=False, gt=None, seg=None):
     lesion_counts_dict['false positives'] = false_positives
     lesion_counts_dict['false negatives'] = false_negatives
     lesion_counts_dict['true lesions'] = true_lesions
+    lesion_counts_dict['pred lesion nodes'] = pred_lesion_nodes
+    lesion_counts_dict['gt lesion nodes'] = gt_lesion_nodes
 
     return lesion_counts_dict
 
@@ -260,26 +253,41 @@ def filter_edges(dgraph):
     return dgraph_viz
 
 
-def visualize_lesion_correspondences(dgraph, fname=None):
+def visualize_lesion_correspondences(dgraph, fname=None, remove_list=None):
 
     pred_lesion_nodes, gt_lesion_nodes = bipartite.sets(dgraph)
 
     dgraph_viz = filter_edges(dgraph)
 
+    if remove_list is not None:
+        dgraph_viz.remove_nodes_from(remove_list)
+
+        # Get rid of the of the lesions from the list
+        for pred_node in remove_list:
+            pred_lesion_nodes.remove(pred_node)
+
     # Create a color map
     color_map = []
+    label_dict = {}
     for node in dgraph_viz:
         node_name = node.get_name()
+
         if "predicted" in node_name.lower():
             color_map.append('red')
+            label_dict[node] = 'P{}'.format(node.get_idx())
         else:
             color_map.append('green')
+            label_dict[node] = 'R{}'.format(node.get_idx())
 
     pos = nx.bipartite_layout(dgraph_viz, pred_lesion_nodes)
 
-    nx.draw(dgraph_viz, pos=pos, node_color=color_map)
+    nx.draw(dgraph_viz,
+            pos=pos,
+            labels=label_dict,
+            with_labels=True,
+            node_color=color_map)
 
-    # TODO: Add figure title and legend
+    plt.tight_layout()
 
     plt.savefig(fname)
 
