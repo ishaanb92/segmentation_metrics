@@ -14,6 +14,9 @@ import numpy as np
 from networkx.algorithms import bipartite
 import matplotlib.pyplot as plt
 import time
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class Lesion():
 
